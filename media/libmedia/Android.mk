@@ -126,8 +126,8 @@ LOCAL_C_INCLUDES := \
     $(TOP)/external/icu/icu4c/source/i18n \
     $(call include-path-for, audio-effects) \
     $(call include-path-for, audio-utils) \
-    $(TOP)/ubuntu/libhybris/hybris/include \
-    $(TOP)/ubuntu/libhybris/compat/media \
+    $(TOP)/halium/libhybris/hybris/include \
+    $(TOP)/halium/libhybris/compat/media \
     $(TOP)/hardware/libhardware_legacy/include
 
 include $(BUILD_SHARED_LIBRARY)
