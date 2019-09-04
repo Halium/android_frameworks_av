@@ -64,7 +64,7 @@ using utilities::convertTo;
 namespace audio_policy
 {
 const char *const ParameterManagerWrapper::mPolicyPfwDefaultConfFileName =
-    "/etc/parameter-framework/ParameterFrameworkConfigurationPolicy.xml";
+    "/system/etc/parameter-framework/ParameterFrameworkConfigurationPolicy.xml";
 
 template <>
 struct ParameterManagerWrapper::parameterManagerElementSupported<ISelectionCriterionInterface> {};

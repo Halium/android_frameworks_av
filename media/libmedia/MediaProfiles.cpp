@@ -609,7 +609,7 @@ MediaProfiles::getInstance()
     if (!sIsInitialized) {
         char value[PROPERTY_VALUE_MAX];
         if (property_get("media.settings.xml", value, NULL) <= 0) {
-            const char *defaultXmlFile = "/etc/media_profiles.xml";
+            const char *defaultXmlFile = "/system/etc/media_profiles.xml";
             FILE *fp = fopen(defaultXmlFile, "r");
             if (fp == NULL) {
                 ALOGW("could not find media config xml file");

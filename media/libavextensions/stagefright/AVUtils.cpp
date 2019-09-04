@@ -456,7 +456,7 @@ void AVUtils::cacheCaptureBuffers(sp<hardware::ICamera> camera, video_encoder en
 }
 
 const char *AVUtils::getCustomCodecsLocation() {
-    return "/etc/media_codecs.xml";
+    return "/system/etc/media_codecs.xml";
 }
 
 #ifdef QCOM_HARDWARE
@@ -483,7 +483,7 @@ void AVUtils::setIntraPeriod(
 #endif
 
 const char *AVUtils::getCustomCodecsPerformanceLocation() {
-    return "/etc/media_codecs_performance.xml";
+    return "/system/etc/media_codecs_performance.xml";
 }
 
 bool AVUtils::IsHevcIDR(const sp<ABuffer> &) {

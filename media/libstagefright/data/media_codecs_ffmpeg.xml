@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!-- Stub media_codecs_ffmpeg.xml to be included by devices' media_codecs.xml
+
+     This file is normally provided by external/stagefright-plugins, but
+     Halium doesn't build this library. It doesn't make much sense to build
+     it because we already have media frameworks available in the host
+     environment. However, many devices have its media_codecs.xml include
+     this file. Without this file, the whole codec listing process fails.
+     Thus, to avoid fixing potentially tens of device trees, this file is
+     provided.
+-->
+
+<Included>
+    <!-- Nothing! -->
+</Included>
