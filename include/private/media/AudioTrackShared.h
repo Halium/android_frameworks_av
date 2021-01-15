@@ -294,14 +294,9 @@ public:
     // Call to force an obtainBuffer() to return quickly with -EINTR
     void        interrupt();
 
-    Modulo<uint32_t> getPosition() {
-        return mEpoch + mCblk->mServer;
-    }
+    Modulo<uint32_t> getPosition();
 
-    void        setEpoch(const Modulo<uint32_t> &epoch) {
-        mEpoch = epoch;
-    }
-
+    void        setEpoch(const Modulo<uint32_t> &epoch);
     void        setMinimum(size_t minimum) {
         // This can only happen on a 64-bit client
         if (minimum > UINT32_MAX) {
@@ -314,9 +309,7 @@ public:
     // in order for the client to be aligned at start of buffer
     virtual size_t  getMisalignment();
 
-    Modulo<uint32_t> getEpoch() const {
-        return mEpoch;
-    }
+    Modulo<uint32_t> getEpoch() const;
 
     uint32_t      getBufferSizeInFrames() const { return mBufferSizeInFrames; }
     // See documentation for AudioTrack::setBufferSizeInFrames()

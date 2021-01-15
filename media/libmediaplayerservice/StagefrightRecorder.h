@@ -139,6 +139,7 @@ protected:
     // frame buffers will be queued and dequeued
     sp<IGraphicBufferProducer> mGraphicBufferProducer;
     sp<ALooper> mLooper;
+    void onReadAudio();
 
     static const int kMaxHighSpeedFps = 1000;
 
@@ -205,6 +206,8 @@ protected:
     StagefrightRecorder &operator=(const StagefrightRecorder &);
 
     status_t setupWAVERecording();
+
+    static void onReadAudioCb(void *context);
 };
 
 }  // namespace android

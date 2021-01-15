@@ -379,6 +379,21 @@ void ClientProxy::interrupt()
     }
 }
 
+Modulo<uint32_t>  ClientProxy::getPosition() {
+    ALOGV("getPosition(): position: %d, mEpoch: %d, mCblk->mServer: %d", mEpoch.value() + mCblk->mServer, mEpoch.value(), mCblk->mServer);
+    return mEpoch + mCblk->mServer;
+}
+
+void ClientProxy::setEpoch(const Modulo<uint32_t> &epoch) {
+    ALOGV("setEpoch(): %d", epoch.value());
+    mEpoch = epoch;
+}
+
+Modulo<uint32_t> ClientProxy::getEpoch() const {
+    ALOGV("getEpoch(): %d", mEpoch.value());
+    return mEpoch;
+}
+
 __attribute__((no_sanitize("integer")))
 size_t ClientProxy::getMisalignment()
 {

@@ -25,6 +25,7 @@ namespace android {
 
 enum {
     NOTIFY = IBinder::FIRST_CALL_TRANSACTION,
+    READ_AUDIO,
 };
 
 class BpMediaRecorderClient: public BpInterface<IMediaRecorderClient>
@@ -44,6 +45,13 @@ public:
         data.writeInt32(ext2);
         remote()->transact(NOTIFY, data, &reply, IBinder::FLAG_ONEWAY);
     }
+
+    virtual void readAudio()
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IMediaRecorderClient::getInterfaceDescriptor());
+        remote()->transact(READ_AUDIO, data, &reply, IBinder::FLAG_ONEWAY);
+    }
 };
 
 IMPLEMENT_META_INTERFACE(MediaRecorderClient, "android.media.IMediaRecorderClient");
@@ -60,6 +68,11 @@ status_t BnMediaRecorderClient::onTransact(
             int ext1 = data.readInt32();
             int ext2 = data.readInt32();
             notify(msg, ext1, ext2);
+            return NO_ERROR;
+        } break;
+        case READ_AUDIO: {
+            CHECK_INTERFACE(IMediaRecorderClient, data, reply);
+            readAudio();
             return NO_ERROR;
         } break;
         default:

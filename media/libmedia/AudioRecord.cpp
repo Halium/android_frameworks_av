@@ -16,7 +16,7 @@
 */
 
 //#define LOG_NDEBUG 0
-#define LOG_TAG "AudioRecord"
+#define LOG_TAG "AudioRecordHybris"
 
 #include <inttypes.h>
 #include <sys/resource.h>
@@ -26,6 +26,7 @@
 #include <utils/Log.h>
 #include <private/media/AudioTrackShared.h>
 #include <media/IAudioFlinger.h>
+#include <media/camera_record_service.h>
 #include "SeempLog.h"
 
 #define WAIT_PERIOD_MS          10
@@ -512,11 +513,12 @@ audio_port_handle_t AudioRecord::getRoutedDeviceId() {
 // -------------------------------------------------------------------------
 
 // must be called with mLock held
-status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16& opPackageName)
+status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16& /*opPackageName*/)
 {
-    const sp<IAudioFlinger>& audioFlinger = AudioSystem::get_audio_flinger();
-    if (audioFlinger == 0) {
-        ALOGE("Could not get audioflinger");
+    // Get an instance of the CameraRecordInstance over Binder
+    const sp<ICameraRecordService>& recordService = AudioSystem::get_camera_record_service();
+    if (recordService == 0) {
+        ALOGE("Could not get CameraRecordService");
         return NO_INIT;
     }
 
@@ -611,30 +613,27 @@ status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16
 
     size_t temp = frameCount;   // temp may be replaced by a revised value of frameCount,
                                 // but we will still need the original value also
-    audio_session_t originalSessionId = mSessionId;
 
     sp<IMemory> iMem;           // for cblk
     sp<IMemory> bufferMem;
-    sp<IAudioRecord> record = audioFlinger->openRecord(input,
-                                                       mSampleRate,
-                                                       mFormat,
-                                                       mChannelMask,
-                                                       opPackageName,
-                                                       &temp,
-                                                       &flags,
-                                                       mClientPid,
-                                                       tid,
-                                                       mClientUid,
-                                                       &mSessionId,
-                                                       &notificationFrames,
-                                                       iMem,
-                                                       bufferMem,
-                                                       &status);
-    ALOGE_IF(originalSessionId != AUDIO_SESSION_ALLOCATE && mSessionId != originalSessionId,
-            "session ID changed from %d to %d", originalSessionId, mSessionId);
-
+    sp<IAudioRecord> record;
+                           
+    // Initialize the input reader RecordThread:
+    status = recordService->initRecord(mSampleRate, mFormat, mChannelMask);
     if (status != NO_ERROR) {
-        ALOGE("AudioFlinger could not create record track, status: %d", status);
+        ALOGE("Failed to initialize RecordThread: %s", strerror(status));
+        return status;
+    }
+
+    record = recordService->openRecord(mSampleRate, mFormat,
+                                       mChannelMask,
+                                       mFrameCount,
+                                       tid,
+                                       (int*)&mSessionId,
+                                       &status);
+
+    if (record == 0 || status != NO_ERROR) {
+        ALOGE("CameraRecordService could not create record track, status: %d", status);
         break;
     }
     ALOG_ASSERT(record != 0);

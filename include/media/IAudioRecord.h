@@ -39,7 +39,7 @@ public:
      * make it active.
      */
     virtual status_t    start(int /*AudioSystem::sync_event_t*/ event,
-                              audio_session_t triggerSession) = 0;
+                              audio_session_t triggerSession) {};
 
     /* Stop a track. If set, the callback will cease being called and
      * obtainBuffer will return an error. Buffers that are already released

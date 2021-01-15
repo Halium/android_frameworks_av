@@ -73,12 +73,15 @@ LOCAL_SRC_FILES:= \
     Visualizer.cpp \
     MemoryLeakTrackUtil.cpp \
     StringArray.cpp \
-    AudioPolicy.cpp
+    AudioPolicy.cpp \
+    record_thread.cpp \
+    record_track.cpp \
+    camera_record_service.cpp
 
 LOCAL_SHARED_LIBRARIES := \
 	libui liblog libcutils libutils libbinder libsonivox libicuuc libicui18n libexpat \
         libcamera_client libstagefright_foundation \
-        libgui libdl libaudioutils libnbaio
+        libgui libdl libaudioutils libnbaio libpower
 
 LOCAL_WHOLE_STATIC_LIBRARIES := libmedia_helper libavmediaextentions
 
@@ -95,9 +98,12 @@ LOCAL_C_INCLUDES := \
     $(TOP)/frameworks/av/media/libstagefright \
     $(TOP)/frameworks/av/media/libavextensions \
     $(call include-path-for, audio-effects) \
-    $(call include-path-for, audio-utils)
+    $(call include-path-for, audio-utils) \
+    $(TOP)/halium/libhybris/hybris/include \
+    $(TOP)/halium/libhybris/compat/media
 
-LOCAL_CFLAGS += -Werror -Wno-error=deprecated-declarations -Wall
+LOCAL_CFLAGS += -Werror -Wno-error=deprecated-declarations -Wall \
+                -Wno-error=unused-variable -Wno-error=unused-parameter -Wno-error=unused-private-field
 LOCAL_CLANG := true
 LOCAL_SANITIZE := unsigned-integer-overflow signed-integer-overflow
 
