@@ -59,7 +59,7 @@ status_t BpCameraRecordService::initRecord(
     return remote()->transact(OPEN_RECORD, data, &reply);
 }
 
-sp<IAudioRecord> BpCameraRecordService::openRecord(uint32_t sampleRate,
+ICameraRecordService::Recording BpCameraRecordService::openRecord(uint32_t sampleRate,
                             audio_format_t format,
                             audio_channel_mask_t channelMask,
                             size_t frameCount,
@@ -71,6 +71,8 @@ sp<IAudioRecord> BpCameraRecordService::openRecord(uint32_t sampleRate,
 
     Parcel data, reply;
     sp<IAudioRecord> record;
+    sp<IMemory> memory;
+    sp<IMemory> buffers;
     data.writeInterfaceToken(ICameraRecordService::getInterfaceDescriptor());
     data.writeInt32(sampleRate);
     data.writeInt32(format);
@@ -88,6 +90,8 @@ sp<IAudioRecord> BpCameraRecordService::openRecord(uint32_t sampleRate,
     else {
         lStatus = reply.readInt32();
         record = interface_cast<IAudioRecord>(reply.readStrongBinder());
+        memory = interface_cast<IMemory>(reply.readStrongBinder());
+        buffers = interface_cast<IMemory>(reply.readStrongBinder());
         if (lStatus == NO_ERROR) {
             if (record == 0) {
                 ALOGE("openRecord should have returned an IAudioRecord instance");
@@ -103,7 +107,7 @@ sp<IAudioRecord> BpCameraRecordService::openRecord(uint32_t sampleRate,
     if (status)
         *status = lStatus;
 
-    return record;
+    return Recording{record, memory, buffers};
 }
 
 // ----------------------------------------------------------------------------
@@ -143,13 +147,16 @@ status_t BnCameraRecordService::onTransact(uint32_t code, const Parcel& data,
             pid_t tid = (pid_t) data.readInt32();
             int sessionId = data.readInt32();
             status_t status;
-            sp<IAudioRecord> record = openRecord(sampleRate, format, channelMask,
+            Recording record = openRecord(sampleRate, format, channelMask,
                 frameCount, tid, &sessionId, &status);
-            LOG_ALWAYS_FATAL_IF((record != 0) != (status == NO_ERROR));
+            LOG_ALWAYS_FATAL_IF((status != NO_ERROR));
 
             reply->writeInt32(sessionId);
             reply->writeInt32(status);
-            reply->writeStrongBinder(record->asBinder(record));
+            reply->writeStrongBinder(record.ar->asBinder(record.ar));
+            reply->writeStrongBinder(record.cblk->asBinder(record.cblk));
+            if (record.buffers != NULL)
+                reply->writeStrongBinder(record.buffers->asBinder(record.buffers));
             return NO_ERROR;
         } break;
         default:
@@ -211,7 +218,7 @@ status_t CameraRecordService::initRecord(
     return NO_ERROR;
 }
 
-sp<IAudioRecord> CameraRecordService::openRecord(uint32_t sampleRate,
+ICameraRecordService::Recording CameraRecordService::openRecord(uint32_t sampleRate,
                             audio_format_t format,
                             audio_channel_mask_t channelMask,
                             size_t frameCount,
@@ -273,7 +280,7 @@ Exit:
     if (status) {
         *status = lStatus;
     }
-    return recordHandle;
+    return Recording{recordHandle, recordTrack->getCblk(), NULL};
 }
 
 sp<CameraRecordService>& CameraRecordService::service_instance()

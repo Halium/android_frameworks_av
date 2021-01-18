@@ -158,7 +158,7 @@ public:
     RecordHandle(const sp<RecordTrack>& recordTrack);
     virtual             ~RecordHandle();
     virtual sp<IMemory> getCblk() const;
-    virtual status_t start(int /*AudioSystem::sync_event_t*/ event, int triggerSession);
+    virtual status_t start(int /*AudioSystem::sync_event_t*/ event, audio_session_t /*int*/ triggerSession);
     virtual void stop();
     virtual status_t onTransact(uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags);
 private:

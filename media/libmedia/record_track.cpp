@@ -239,11 +239,11 @@ sp<IMemory> RecordHandle::getCblk() const
     return mRecordTrack->getCblk();
 }
 
-status_t RecordHandle::start(int /*AudioSystem::sync_event_t*/ event, int triggerSession)
+status_t RecordHandle::start(int /*AudioSystem::sync_event_t*/ event, audio_session_t /*int*/ triggerSession)
 {
     REPORT_FUNCTION();
 
-    status_t status = mRecordTrack->start((AudioSystem::sync_event_t)event, triggerSession);
+    status_t status = mRecordTrack->start((AudioSystem::sync_event_t)event, (int)triggerSession);
     return status;
 }
 

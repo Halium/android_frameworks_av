@@ -21,6 +21,7 @@
 
 #include <media/IAudioRecord.h>
 #include <binder/IInterface.h>
+#include <binder/IMemory.h>
 #include <binder/Parcel.h>
 
 #include <system/audio.h>
@@ -34,6 +35,11 @@ class RecordThread;
 class ICameraRecordService : public IInterface
 {
 public:
+    struct Recording {
+        sp<IAudioRecord> ar;
+        sp<IMemory> cblk;
+        sp<IMemory> buffers;
+    };
     DECLARE_META_INTERFACE(CameraRecordService);
 
     static const char* exported_service_name() { return "android.media.ICameraRecordService"; }
@@ -42,7 +48,7 @@ public:
                                 uint32_t sampleRate,
                                 audio_format_t format,
                                 audio_channel_mask_t channelMask) = 0;
-    virtual sp<IAudioRecord> openRecord(
+    virtual Recording openRecord(
                                 uint32_t sampleRate,
                                 audio_format_t format,
                                 audio_channel_mask_t channelMask,
@@ -78,7 +84,7 @@ public:
                                 uint32_t sampleRate,
                                 audio_format_t format,
                                 audio_channel_mask_t channelMask);
-    virtual sp<IAudioRecord> openRecord(
+    virtual Recording openRecord(
                                 uint32_t sampleRate,
                                 audio_format_t format,
                                 audio_channel_mask_t channelMask,
@@ -104,7 +110,7 @@ public:
                                 uint32_t sampleRate,
                                 audio_format_t format,
                                 audio_channel_mask_t channelMask);
-    virtual sp<IAudioRecord> openRecord(
+    virtual Recording openRecord(
                                 uint32_t sampleRate,
                                 audio_format_t format,
                                 audio_channel_mask_t channelMask,
