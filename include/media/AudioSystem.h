@@ -38,6 +38,7 @@ typedef void (*audio_session_callback)(int event,
         sp<AudioSessionInfo>& session, bool added);
 
 class IAudioFlinger;
+class ICameraRecordService;
 class IAudioPolicyService;
 class String8;
 
@@ -104,6 +105,9 @@ public:
 
     // helper function to obtain AudioFlinger service handle
     static const sp<IAudioFlinger> get_audio_flinger();
+
+    // helper function to obtain CameraRecordService service handle
+    static const sp<ICameraRecordService>& get_camera_record_service();
 
     static float linearToLog(int volume);
     static int logToLinear(float volume);
@@ -462,6 +466,7 @@ private:
     static Mutex gLock;      // protects gAudioFlinger and gAudioErrorCallback,
     static Mutex gLockAPS;   // protects gAudioPolicyService and gAudioPolicyServiceClient
     static sp<IAudioFlinger> gAudioFlinger;
+    static sp<ICameraRecordService> gCameraRecord;
     static audio_error_callback gAudioErrorCallback;
     static dynamic_policy_callback gDynPolicyCallback;
     static record_config_callback gRecordConfigCallback;
@@ -474,6 +479,10 @@ private:
     static audio_channel_mask_t gPrevInChannelMask;
 
     static sp<IAudioPolicyService> gAudioPolicyService;
+
+    // This used to be part of AudioFlinger, but brought into here since
+    // we're no longer using AudioFlinger
+    static volatile int32_t        mNextUniqueId;
 };
 
 };  // namespace android

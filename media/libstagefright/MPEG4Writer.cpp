@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-//#define LOG_NDEBUG 0
+#define LOG_NDEBUG 0
 #define LOG_TAG "MPEG4Writer"
 
 #include <algorithm>
@@ -3276,6 +3276,7 @@ void MPEG4Writer::Track::writeTkhdBox(uint32_t now) {
     mOwner->writeInt16(mIsAudio ? 0x100 : 0);  // volume
     mOwner->writeInt16(0);             // reserved
 
+    ALOGV("Setting mRotation to be (matrix): %d", mRotation);
     mOwner->writeCompositionMatrix(mRotation);       // matrix
 
     if (mIsAudio) {

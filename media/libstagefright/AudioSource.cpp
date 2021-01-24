@@ -30,6 +30,8 @@
 #include <media/stagefright/foundation/ALooper.h>
 #include <cutils/properties.h>
 
+#include <media/IMediaRecorderClient.h>
+
 namespace android {
 
 static void AudioRecordCallbackFunction(int event, void *user, void *info) {
@@ -53,7 +55,9 @@ AudioSource::AudioSource(
         audio_source_t inputSource, const String16 &opPackageName,
         uint32_t sampleRate, uint32_t channelCount, uint32_t outSampleRate,
         uid_t uid, pid_t pid)
-    : mStarted(false),
+    : mAudioReadCb(0),
+      mAudioReadContext(0),
+      mStarted(false),
       mSampleRate(sampleRate),
       mOutSampleRate(outSampleRate > 0 ? outSampleRate : sampleRate),
       mTrackMaxAmplitude(false),
@@ -117,6 +121,14 @@ status_t AudioSource::initCheck() const {
     return mInitCheck;
 }
 
+status_t AudioSource::setListener(const sp<IMediaRecorderClient>& listener)
+{
+    Mutex::Autolock autoLock(mLock);
+    mListener = listener;
+
+    return NO_ERROR;
+}
+
 status_t AudioSource::start(MetaData *params) {
     Mutex::Autolock autoLock(mLock);
     if (mStarted) {
@@ -147,7 +159,6 @@ status_t AudioSource::start(MetaData *params) {
 }
 
 void AudioSource::releaseQueuedFrames_l() {
-    ALOGV("releaseQueuedFrames_l");
     List<MediaBuffer *>::iterator it;
     while (!mBuffersReceived.empty()) {
         it = mBuffersReceived.begin();
@@ -181,6 +192,25 @@ status_t AudioSource::reset() {
     releaseQueuedFrames_l();
 
     return OK;
+}
+
+void AudioSource::setReadAudioCb(on_audio_source_read_audio cb, void *context)
+{
+    mAudioReadCb = cb;
+    mAudioReadContext = context;
+
+    // RecordThread has been setup successfully by this point, so signal
+    // the callback to trigger the writer to begin read/writing mic data
+    triggerReadAudio();
+}
+
+void AudioSource::triggerReadAudio()
+{
+    if (mAudioReadCb != NULL) {
+        mAudioReadCb(mAudioReadContext);
+    }
+    else
+        ALOGW("Couldn't read new audio data since mAudioReadCb is NULL");
 }
 
 sp<MetaData> AudioSource::getFormat() {

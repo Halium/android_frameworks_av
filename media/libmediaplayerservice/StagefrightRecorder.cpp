@@ -70,13 +70,8 @@ static const float kMinTypicalDisplayRefreshingRate = kTypicalDisplayRefreshingR
 static const int kMaxNumVideoTemporalLayers = 8;
 
 // To collect the encoder usage for the battery app
-static void addBatteryData(uint32_t params) {
-    sp<IBinder> binder =
-        defaultServiceManager()->getService(String16("media.player"));
-    sp<IMediaPlayerService> service = interface_cast<IMediaPlayerService>(binder);
-    CHECK(service.get() != NULL);
-
-    service->addBatteryData(params);
+static void addBatteryData(uint32_t /*params*/) {
+    // Empty on purpose.
 }
 
 
@@ -117,6 +112,21 @@ status_t StagefrightRecorder::init() {
 sp<IGraphicBufferProducer> StagefrightRecorder::querySurfaceMediaSource() const {
     ALOGV("Get SurfaceMediaSource");
     return mGraphicBufferProducer;
+}
+
+void StagefrightRecorder::onReadAudioCb(void *context)
+{
+    ALOGV("onReadAudioCb");
+    if (context != NULL) {
+        StagefrightRecorder *sr = static_cast<StagefrightRecorder*>(context);
+        sr->onReadAudio();
+    }
+}
+
+void StagefrightRecorder::onReadAudio()
+{
+    ALOGV("onReadAudio");
+    mListener->readAudio();
 }
 
 status_t StagefrightRecorder::setAudioSource(audio_source_t as) {
@@ -779,6 +789,7 @@ status_t StagefrightRecorder::setParameters(const String8 &params) {
 }
 
 status_t StagefrightRecorder::setListener(const sp<IMediaRecorderClient> &listener) {
+    ALOGD("setListener");
     mListener = listener;
 
     return OK;
@@ -968,6 +979,14 @@ sp<MediaCodecSource> StagefrightRecorder::createAudioSource() {
     if (err != OK) {
         ALOGE("audio source is not initialized");
         return NULL;
+    }
+
+    if (audioSource != 0) {
+        audioSource->setListener(mListener);
+        audioSource->setReadAudioCb(&StagefrightRecorder::onReadAudioCb, this);
+    }
+    else {
+        ALOGW("Can't call AudioSource::setListener since audioSource is NULL");
     }
 
     sp<AMessage> format = new AMessage;
@@ -1816,6 +1835,7 @@ void StagefrightRecorder::setupMPEG4orWEBMMetaData(sp<MetaData> *meta) {
             (*meta)->setInt64(kKeyTrackTimeStatus, mTrackEveryTimeDurationUs);
         }
         if (mRotationDegrees != 0) {
+            ALOGV("Setting rotation degrees to be %d", mRotationDegrees);
             (*meta)->setInt32(kKeyRotation, mRotationDegrees);
         }
     }

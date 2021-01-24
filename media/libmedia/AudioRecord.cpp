@@ -16,7 +16,7 @@
 */
 
 //#define LOG_NDEBUG 0
-#define LOG_TAG "AudioRecord"
+#define LOG_TAG "AudioRecordHybris"
 
 #include <inttypes.h>
 #include <sys/resource.h>
@@ -26,6 +26,7 @@
 #include <utils/Log.h>
 #include <private/media/AudioTrackShared.h>
 #include <media/IAudioFlinger.h>
+#include <media/camera_record_service.h>
 #include "SeempLog.h"
 
 #define WAIT_PERIOD_MS          10
@@ -116,6 +117,7 @@ AudioRecord::~AudioRecord()
             mAudioRecordThread->requestExitAndWait();
             mAudioRecordThread.clear();
         }
+
         // No lock here: worst case we remove a NULL callback which will be a nop
         if (mDeviceCallback != 0 && mInput != AUDIO_IO_HANDLE_NONE) {
             AudioSystem::removeAudioDeviceCallback(mDeviceCallback, mInput);
@@ -282,7 +284,7 @@ status_t AudioRecord::set(
     mMarkerReached = false;
     mNewPosition = 0;
     mUpdatePeriod = 0;
-    AudioSystem::acquireAudioSessionId(mSessionId, -1);
+    // AudioSystem::acquireAudioSessionId(mSessionId, -1);
     mSequence = 1;
     mObservedSequence = mSequence;
     mInOverrun = false;
@@ -478,6 +480,8 @@ status_t AudioRecord::getTimestamp(ExtendedTimestamp *timestamp)
             }
         }
     }
+
+    ALOGD("return status %d", status);
     return status;
 }
 
@@ -512,18 +516,19 @@ audio_port_handle_t AudioRecord::getRoutedDeviceId() {
 // -------------------------------------------------------------------------
 
 // must be called with mLock held
-status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16& opPackageName)
+status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16& /*opPackageName*/)
 {
-    const sp<IAudioFlinger>& audioFlinger = AudioSystem::get_audio_flinger();
-    if (audioFlinger == 0) {
-        ALOGE("Could not get audioflinger");
+    // Get an instance of the CameraRecordInstance over Binder
+    const sp<ICameraRecordService>& recordService = AudioSystem::get_camera_record_service();
+    if (recordService == 0) {
+        ALOGE("Could not get CameraRecordService");
         return NO_INIT;
     }
 
     if (mDeviceCallback != 0 && mInput != AUDIO_IO_HANDLE_NONE) {
         AudioSystem::removeAudioDeviceCallback(mDeviceCallback, mInput);
     }
-    audio_io_handle_t input;
+    audio_io_handle_t input = 1;
 
     // mFlags (not mOrigFlags) is modified depending on whether fast request is accepted.
     // After fast request is denied, we will request again if IAudioRecord is re-created.
@@ -537,6 +542,7 @@ status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16
     // The lack of indentation is deliberate, to reduce code churn and ease merges.
     for (;;) {
 
+#if 0
     status = AudioSystem::getInputForAttr(&mAttributes, &input,
                                         mSessionId,
                                         // FIXME compare to AudioTrack
@@ -551,6 +557,7 @@ status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16
               mSessionId, mAttributes.source, mSampleRate, mFormat, mChannelMask, mFlags);
         return BAD_VALUE;
     }
+#endif
 
     // Now that we have a reference to an I/O handle and have not yet handed it off to AudioFlinger,
     // we must release it ourselves if anything goes wrong.
@@ -565,13 +572,9 @@ status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16
 #endif
 
     uint32_t afSampleRate;
-    status = AudioSystem::getSamplingRate(input, &afSampleRate);
-    if (status != NO_ERROR) {
-        ALOGE("getSamplingRate(input=%d) status %d", input, status);
-        break;
-    }
-    if (mSampleRate == 0) {
-        mSampleRate = afSampleRate;
+    afSampleRate = AudioSystem::getPrimaryOutputSamplingRate();
+    if (afSampleRate == 0) {
+        ALOGW("getPrimaryOutputSamplingRate failed");
     }
 
     // Client can only express a preference for FAST.  Server will perform additional tests.
@@ -603,57 +606,43 @@ status_t AudioRecord::openRecord_l(const Modulo<uint32_t> &epoch, const String16
     audio_input_flags_t flags = mFlags;
 
     pid_t tid = -1;
+    size_t temp = frameCount;   // temp may be replaced by a revised value of frameCount,
+                                // but we will still need the original value also
     if (mFlags & AUDIO_INPUT_FLAG_FAST) {
         if (mAudioRecordThread != 0) {
             tid = mAudioRecordThread->getTid();
         }
     }
 
-    size_t temp = frameCount;   // temp may be replaced by a revised value of frameCount,
-                                // but we will still need the original value also
-    audio_session_t originalSessionId = mSessionId;
-
     sp<IMemory> iMem;           // for cblk
     sp<IMemory> bufferMem;
-    sp<IAudioRecord> record = audioFlinger->openRecord(input,
-                                                       mSampleRate,
-                                                       mFormat,
-                                                       mChannelMask,
-                                                       opPackageName,
-                                                       &temp,
-                                                       &flags,
-                                                       mClientPid,
-                                                       tid,
-                                                       mClientUid,
-                                                       &mSessionId,
-                                                       &notificationFrames,
-                                                       iMem,
-                                                       bufferMem,
-                                                       &status);
-    ALOGE_IF(originalSessionId != AUDIO_SESSION_ALLOCATE && mSessionId != originalSessionId,
-            "session ID changed from %d to %d", originalSessionId, mSessionId);
-
+    sp<IAudioRecord> record;
+                           
+    // Initialize the input reader RecordThread:
+    status = recordService->initRecord(mSampleRate, mFormat, mChannelMask);
     if (status != NO_ERROR) {
-        ALOGE("AudioFlinger could not create record track, status: %d", status);
+        ALOGE("Failed to initialize RecordThread: %s", strerror(status));
+        return status;
+    }
+
+    ICameraRecordService::Recording recording = recordService->openRecord(mSampleRate, mFormat,
+                                                                          mChannelMask,
+                                                                          frameCount,
+                                                                          tid,
+                                                                          (int*)&mSessionId,
+                                                                          &status);
+
+    if (recording.ar == 0 || status != NO_ERROR) {
+        ALOGE("CameraRecordService could not create record track, status: %d", status);
         break;
     }
-    ALOG_ASSERT(record != 0);
+
+    record = recording.ar;
+    iMem = recording.cblk;
+    bufferMem = recording.buffers;
 
     // AudioFlinger now owns the reference to the I/O handle,
     // so we are no longer responsible for releasing it.
-
-    mAwaitBoost = false;
-    if (mFlags & AUDIO_INPUT_FLAG_FAST) {
-        if (flags & AUDIO_INPUT_FLAG_FAST) {
-            ALOGI("AUDIO_INPUT_FLAG_FAST successful; frameCount %zu", frameCount);
-            mAwaitBoost = true;
-        } else {
-            ALOGW("AUDIO_INPUT_FLAG_FAST denied by server; frameCount %zu", frameCount);
-            mFlags = (audio_input_flags_t) (mFlags & ~(AUDIO_INPUT_FLAG_FAST |
-                    AUDIO_INPUT_FLAG_RAW));
-            continue;   // retry
-        }
-    }
     mFlags = flags;
 
     if (iMem == 0) {
